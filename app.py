@@ -1,14 +1,11 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+from tinygrad.tensor import Tensor
+from tinygrad.nn import TFLiteModel
 
 # Load model
-interpreter = tf.lite.Interpreter(model_path="cats_dogs_model.tflite")
-interpreter.allocate_tensors()
-
-input_details = interpreter.get_input_details()
-output_details = interpreter.get_output_details()
+model = TFLiteModel("cats_dogs_model.tflite")
 
 st.title("Cat vs Dog Classifier 🐱🐶")
 
@@ -21,9 +18,8 @@ if uploaded_file:
     img = np.array(image, dtype=np.float32) / 255.0
     img = np.expand_dims(img, axis=0)
 
-    interpreter.set_tensor(input_details[0]['index'], img)
-    interpreter.invoke()
-    prediction = interpreter.get_tensor(output_details[0]['index'])[0]
+    # Run model
+    output = model(Tensor(img)).numpy()[0]
 
-    label = "Dog" if prediction > 0.5 else "Cat"
+    label = "Dog" if output > 0.5 else "Cat"
     st.subheader(f"Prediction: **{label}**")
