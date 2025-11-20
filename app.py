@@ -1,11 +1,13 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-from tinygrad.tensor import Tensor
-from tinygrad.nn import TFLiteModel
+import onnxruntime as ort
 
-# Load model
-model = TFLiteModel("cats_dogs_model.tflite")
+# Load ONNX model
+session = ort.InferenceSession("cats_dogs_model.onnx")
+
+input_name = session.get_inputs()[0].name
+output_name = session.get_outputs()[0].name
 
 st.title("Cat vs Dog Classifier 🐱🐶")
 
@@ -18,8 +20,7 @@ if uploaded_file:
     img = np.array(image, dtype=np.float32) / 255.0
     img = np.expand_dims(img, axis=0)
 
-    # Run model
-    output = model(Tensor(img)).numpy()[0]
+    pred = session.run([output_name], {input_name: img})[0][0]
 
-    label = "Dog" if output > 0.5 else "Cat"
+    label = "Dog" if pred > 0.5 else "Cat"
     st.subheader(f"Prediction: **{label}**")
