@@ -3,26 +3,43 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
-# Load model
-model = tf.keras.models.load_model("model.h5")
+st.title("🐱🐶 Cat vs Dog Classifier (TFLite)")
+st.write("Upload an image to classify")
 
-# Preprocess function
-def preprocess(img):
-    img = img.resize((180, 180))
-    img = np.array(img) / 255.0
-    img = np.expand_dims(img, axis=0)
-    return img
+# --------- Load the TFLite model ---------
+@st.cache_resource
+def load_tflite_model():
+    interpreter = tf.lite.Interpreter(model_path="cats_dogs_model.tflite")
+    interpreter.allocate_tensors()
+    return interpreter
 
-st.title("🐶🐱 Cat vs Dog Classifier")
+interpreter = load_tflite_model()
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
 
-uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
+# --------- Preprocess ---------
+def preprocess_image(image):
+    image = image.resize((180, 180))
+    img_array = np.array(image).astype("float32") / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    return img_array
+
+# --------- Predict ---------
+def predict(img_array):
+    interpreter.set_tensor(input_details[0]["index"], img_array)
+    interpreter.invoke()
+    output = interpreter.get_tensor(output_details[0]["index"])
+    return float(output[0][0])
+
+# --------- UI ---------
+uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file)
+    image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    img = preprocess(image)
-    prediction = model.predict(img)[0][0]
+    img_array = preprocess_image(image)
+    prediction = predict(img_array)
 
     if prediction > 0.5:
         st.success("Prediction: **Dog 🐶**")
